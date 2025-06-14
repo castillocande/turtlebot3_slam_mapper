@@ -9,6 +9,8 @@ from tf2_ros import TransformBroadcaster
 import tf_transformations
 import math
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
+from scipy.spatial.transform import Rotation as R
+
 
 class Particle:
     def __init__(self, x, y, theta, weight, map_shape):
@@ -33,10 +35,10 @@ class PythonSlamNode(Node):
         self.declare_parameter('base_frame', 'base_footprint')
         # TODO: define map resolution, width, height, and number of particles
 
+        #10 a 20 particulas
 
 
-
-        self.resolution = self.get_parameter('map_resolution').get_parameter_value().double_value
+        self.resolution = self.get_parameter('map_resolution').get_parameter_value().double_value #esta en config/slam_toolbox_params.yaml --> modificamos el config?
         self.map_width_m = self.get_parameter('map_width_meters').get_parameter_value().double_value
         self.map_height_m = self.get_parameter('map_height_meters').get_parameter_value().double_value
         self.map_width_cells = int(self.map_width_m / self.resolution)
@@ -93,13 +95,28 @@ class PythonSlamNode(Node):
         # 1. Motion update (sample motion model)
         odom = self.last_odom
         # TODO: Retrieve odom_pose from odom message - remember that orientation is a quaternion
+        
+        x = odom.pose.pose.position.x
+        y = odom.pose.pose.position.y
 
+        # Extract quaternion (w, x, y, z) format
+        q_w = odom.pose.pose.orientation.w
+        q_x = odom.pose.pose.orientation.x
+        q_y = odom.pose.pose.orientation.y
+        q_z = odom.pose.pose.orientation.z
 
+        # Convert quaternion to rotation object
+        current_rotation = R.from_quat([q_x, q_y, q_z, q_w])
+        theta = current_rotation.as_euler('xyz', degrees=False)[2]  # Extract yaw
+
+        xt = np.array([x, y, theta])
 
 
         # TODO: Model the particles around the current pose
         for p in self.particles:
             # Add noise to simulate motion uncertainty
+            p.x = x + 
+
 
 
 
