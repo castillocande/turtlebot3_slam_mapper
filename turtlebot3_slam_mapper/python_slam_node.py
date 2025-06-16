@@ -49,11 +49,10 @@ class PythonSlamNode(Node):
         self.map_origin_y = -5.0
 
         # TODO: define the log-odds criteria for free and occupied cells
-
-
-
-
-
+        prob_occ = 0.7
+        prob_free = 0.3
+        self.log_odds_threshold_occ = np.log(prob_occ/prob_free)
+        self.log_odds_threshold_free = np.log(prob_free/prob_occ)
 
         self.log_odds_max = 5.0
         self.log_odds_min = -5.0
@@ -246,19 +245,25 @@ class PythonSlamNode(Node):
         # TODO: Fill in map_msg fields and publish one map
         map_msg = OccupancyGrid()
 
+        best_particle = max(self.particles, key=lambda p: p.weight)
+        log_odds = best_particle.log_odds_map
+ 
+        map_msg.header.stamp = self.get_clock().now().to_msg()
+        map_msg.header.frame_id = "map"
+        map_msg.info.resolution = self.resolution
+        map_msg.info.width = self.map_width_m
+        map_msg.info.height = self.map_height_m
+        map_msg.info.origin.position.x = self.map_origin_x
+        map_msg.info.origin.position.y = self.map_origin_y
+        map_msg.info.origin.orientation.w = 1.0
 
 
+        flat_data = log_odds.astype(np.int8).flatten()
+        flat_data[log_odds < self.log_odds_threshold_free] = 0     # libre
+        flat_data[log_odds > self.log_odds_threshold_occ] = 100   # ocupado
+        flat_data[(log_odds <= self.log_odds_threshold_free) & (log_odds >= self.log_odds_threshold_occ)] = -1  # desconocido
 
-
-
-
-
-
-
-
-
-
-
+        map_msg.data = flat_data.tolist()
 
         self.map_publisher.publish(map_msg)
         self.get_logger().debug("Map published.")
