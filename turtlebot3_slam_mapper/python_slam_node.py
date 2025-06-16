@@ -10,6 +10,8 @@ import tf_transformations
 import math
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 from scipy.spatial.transform import Rotation as R
+import random
+from copy import deepcopy
 
 
 class Particle:
@@ -107,45 +109,39 @@ class PythonSlamNode(Node):
 
         # Convert quaternion to rotation object
         current_rotation = R.from_quat([q_x, q_y, q_z, q_w])
-        theta = current_rotation.as_euler('xyz', degrees=False)[2]  # Extract yaw
-
-        xt = np.array([x, y, theta])
-
+        theta = current_rotation.as_euler('xyz', degrees=False)[2] 
 
         # TODO: Model the particles around the current pose
         for p in self.particles:
             # Add noise to simulate motion uncertainty
-            p.x = x + 
+            dx = x - p.x
+            dy = y - p.y
+            dtheta = theta - p.theta
 
-
-
-
-
-
+            p.x += np.random.normal(loc=dx, scale=0.1, size=1)
+            p.y += np.random.normal(loc=dy, scale=0.1, size=1)
+            p.theta += np.random.normal(loc=dtheta, scale=0.1, size=1)
 
 
 
         # TODO: 2. Measurement update (weight particles)
         weights = []
+        s = 0
         for p in self.particles:
             weight = self.compute_weight(p, msg) # Compute weights for each particle
+            weights.append(weight)
+            s += weight
             # Save, append
 
         # Normalize weights
-
         for i, p in enumerate(self.particles):
-            p.weight = weights[i] # Resave weights
+            p.weight = weights[i]/s # Resave weights
 
         # 3. Resample
         self.particles = self.resample_particles(self.particles)
 
         # TODO: 4. Use weighted mean of all particles for mapping and pose (update current_map_pose and current_odom_pose, for each particle)
-
-
-
-
-
-
+        #esto hay que hacerlo??
 
         # 5. Mapping (update map with best particle's pose)
         for p in self.particles:
@@ -176,14 +172,27 @@ class PythonSlamNode(Node):
 
     def resample_particles(self, particles):
         # TODO: Resample particles
+        N = len(particles)
+        cdf_sum=0
+        p_cdf=[]
+
+        for p in range(particles):
+            cdf_sum = cdf_sum+p.weight
+            p_cdf.append(cdf_sum)
+
+        # Calculate the step for random sampling
+        step = 1.0/N
+
+        # Sample a value in between [0,step)
+        seed = random.uniform(0, step)
+
         new_particles = []
-
-
-
-
-
-
-
+        last_index = 0
+        for h in range(len(p)):
+            while seed > p_cdf[last_index]:
+                last_index+=1
+            new_particles.append(deepcopy(p[last_index]))
+            seed = seed+step
 
         return new_particles
 
