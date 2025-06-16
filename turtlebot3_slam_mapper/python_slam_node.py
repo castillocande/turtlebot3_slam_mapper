@@ -258,12 +258,11 @@ class PythonSlamNode(Node):
         map_msg.info.origin.orientation.w = 1.0
 
 
-        flat_data = log_odds.astype(np.int8).flatten()
-        flat_data[log_odds < self.log_odds_threshold_free] = 0     # libre
-        flat_data[log_odds > self.log_odds_threshold_occ] = 100   # ocupado
-        flat_data[(log_odds <= self.log_odds_threshold_free) & (log_odds >= self.log_odds_threshold_occ)] = -1  # desconocido
+        occupancy_grid = np.full(log_odds.shape, -1, dtype=np.int8)
+        occupancy_grid[log_odds < self.log_odds_threshold_free] = 0
+        occupancy_grid[log_odds > self.log_odds_threshold_occ] = 100
 
-        map_msg.data = flat_data.tolist()
+        map_msg.data = occupancy_grid.flatten().tolist()
 
         self.map_publisher.publish(map_msg)
         self.get_logger().debug("Map published.")
