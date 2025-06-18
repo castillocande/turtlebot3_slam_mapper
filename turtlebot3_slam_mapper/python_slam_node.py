@@ -6,7 +6,6 @@ from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformBroadcaster
-import tf_transformations
 import math
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 from scipy.spatial.transform import Rotation as R
@@ -38,7 +37,11 @@ class PythonSlamNode(Node):
         # TODO: define map resolution, width, height, and number of particles
 
         #10 a 20 particulas
-
+        self.declare_parameter('map_resolution', 0.05)
+        self.declare_parameter('map_width_meters', 5.0)
+        self.declare_parameter('map_height_meters', 5.0)
+        self.declare_parameter('num_particles', 10)
+        
 
         self.resolution = self.get_parameter('map_resolution').get_parameter_value().double_value #esta en config/slam_toolbox_params.yaml --> modificamos el config?
         self.map_width_m = self.get_parameter('map_width_meters').get_parameter_value().double_value
@@ -51,8 +54,8 @@ class PythonSlamNode(Node):
         # TODO: define the log-odds criteria for free and occupied cells
         prob_occ = 0.7
         prob_free = 0.3
-        self.log_odds_threshold_occ = np.log(prob_occ/prob_free)
-        self.log_odds_threshold_free = np.log(prob_free/prob_occ)
+        self.log_odds_occ = np.log(prob_occ/prob_free)
+        self.log_odds_free = np.log(prob_free/prob_occ)
 
         self.log_odds_max = 5.0
         self.log_odds_min = -5.0
@@ -60,6 +63,7 @@ class PythonSlamNode(Node):
         # Particle filter
         self.num_particles = self.get_parameter('num_particles').get_parameter_value().integer_value
         self.particles = [Particle(0.0, 0.0, 0.0, 1.0/self.num_particles, (self.map_height_cells, self.map_width_cells)) for _ in range(self.num_particles)]
+        self.best_map = np.zeros((self.map_height_cells, self.map_width_cells), dtype=np.float32)
         self.last_odom = None
 
         # ROS2 publishers/subscribers
@@ -117,9 +121,9 @@ class PythonSlamNode(Node):
             dy = y - p.y
             dtheta = theta - p.theta
 
-            p.x += np.random.normal(loc=dx, scale=0.1, size=1)
-            p.y += np.random.normal(loc=dy, scale=0.1, size=1)
-            p.theta += np.random.normal(loc=dtheta, scale=0.1, size=1)
+            p.x = x + np.random.normal(loc=dx, scale=0.1, size=1)
+            p.y = y + np.random.normal(loc=dy, scale=0.1, size=1)
+            p.theta = theta + np.random.normal(loc=dtheta, scale=0.1, size=1)
 
 
 
@@ -140,7 +144,9 @@ class PythonSlamNode(Node):
         self.particles = self.resample_particles(self.particles)
 
         # TODO: 4. Use weighted mean of all particles for mapping and pose (update current_map_pose and current_odom_pose, for each particle)
-        #esto hay que hacerlo??
+        # best_particle = max(self.particles, key=lambda p: p.weight)
+        # self.best_map = best_particle.log_odds_map
+        #self.best_pose = [best_particle.x, best_particle.y, best_particle.theta]
 
         # 5. Mapping (update map with best particle's pose)
         for p in self.particles:
@@ -175,7 +181,7 @@ class PythonSlamNode(Node):
         cdf_sum=0
         p_cdf=[]
 
-        for p in range(particles):
+        for p in particles:
             cdf_sum = cdf_sum+p.weight
             p_cdf.append(cdf_sum)
 
@@ -187,10 +193,10 @@ class PythonSlamNode(Node):
 
         new_particles = []
         last_index = 0
-        for h in range(len(p)):
+        for h in range(len(particles)):
             while seed > p_cdf[last_index]:
                 last_index+=1
-            new_particles.append(deepcopy(p[last_index]))
+            new_particles.append(deepcopy(particles[last_index]))
             seed = seed+step
 
         return new_particles
@@ -203,23 +209,31 @@ class PythonSlamNode(Node):
             if math.isnan(current_range) or current_range < scan_msg.range_min:
                 continue
             # TODO: Update map: transform the scan into the map frame
+            angle_scan = scan_msg.angle_min + i * scan_msg.angle_increment
+            x_scan = current_range * math.cos(angle_scan)
+            y_scan = current_range * math.sin(angle_scan)
 
+            # Transformar a coordenadas del mapa (pose global del rayo)
+            x_hit = robot_x + x_scan * math.cos(robot_theta) - y_scan * math.sin(robot_theta)
+            y_hit = robot_y + x_scan * math.sin(robot_theta) + y_scan * math.cos(robot_theta)
 
+            # Coordenadas de inicio (robot) en celdas
+            x0 = int((robot_x - self.map_origin_x) / self.resolution)
+            y0 = int((robot_y - self.map_origin_y) / self.resolution)
 
-
-
-
-
-
-
-
+            # Coordenadas de fin (impacto del rayo) en celdas
+            x1 = int((x_hit - self.map_origin_x) / self.resolution)
+            y1 = int((y_hit - self.map_origin_y) / self.resolution)
 
             # TODO: Use self.bresenham_line for free cells
+            self.bresenham_line(particle, x0, y0, x1, y1)
 
             # TODO: Update particle.log_odds_map accordingly
-
+            if is_hit:
+                if 0 <= x1 < self.map_width_cells and 0 <= y1 < self.map_height_cells:
+                    particle.log_odds_map[y1, x1] += self.log_odds_occ
+                    particle.log_odds_map[y1, x1] = np.clip(particle.log_odds_map[y1, x1], self.log_odds_min, self.log_odds_max)
             
-
     def bresenham_line(self, particle, x0, y0, x1, y1):
         dx = abs(x1 - x0)
         dy = abs(y1 - y0)
@@ -244,46 +258,45 @@ class PythonSlamNode(Node):
     def publish_map(self):
         # TODO: Fill in map_msg fields and publish one map
         map_msg = OccupancyGrid()
+        print("se esta ejecutando")
 
         best_particle = max(self.particles, key=lambda p: p.weight)
-        log_odds = best_particle.log_odds_map
+        log_odds = best_particle.log_odds_map #self.best_map 
  
         map_msg.header.stamp = self.get_clock().now().to_msg()
         map_msg.header.frame_id = "map"
         map_msg.info.resolution = self.resolution
-        map_msg.info.width = self.map_width_m
-        map_msg.info.height = self.map_height_m
+        map_msg.info.width = self.map_width_cells
+        map_msg.info.height = self.map_height_cells
         map_msg.info.origin.position.x = self.map_origin_x
         map_msg.info.origin.position.y = self.map_origin_y
         map_msg.info.origin.orientation.w = 1.0
 
-
         occupancy_grid = np.full(log_odds.shape, -1, dtype=np.int8)
-        occupancy_grid[log_odds < self.log_odds_threshold_free] = 0
-        occupancy_grid[log_odds > self.log_odds_threshold_occ] = 100
+        occupancy_grid[log_odds < self.log_odds_free] = 0
+        occupancy_grid[log_odds > self.log_odds_occ] = 100
 
         map_msg.data = occupancy_grid.flatten().tolist()
 
         self.map_publisher.publish(map_msg)
+        print("se termino de ejecutar")
         self.get_logger().debug("Map published.")
 
     def broadcast_map_to_odom(self):
         # TODO: Broadcast map->odom transform
         t = TransformStamped()
         
+        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.frame_id = "map"
+        t.child_frame_id = "odom"
+        t.transform.translation.x = 0.0
+        t.transform.translation.y = 0.0
+        t.transform.translation.z = 0.0
 
-
-
-
-
-
-
-
-
-
-
-
-
+        t.transform.rotation.x = 0.0
+        t.transform.rotation.y = 0.0
+        t.transform.rotation.z = 0.0
+        t.transform.rotation.w = 1.0
         
         self.tf_broadcaster.sendTransform(t)
 
