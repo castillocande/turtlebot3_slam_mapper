@@ -24,13 +24,13 @@ class Particle:
     def pose(self):
         return np.array([self.x, self.y, self.theta])
 
-class PythonSlamNode(Node):
+class PythonSlamNode(Node): # hereda de Node
     def __init__(self):
-        super().__init__('python_slam_node')
+        super().__init__('python_slam_node') # llama al constructor de Node con el nombre como argumento
 
         # Parameters
-        self.declare_parameter('odom_topic', '/odom')
-        self.declare_parameter('scan_topic', '/scan')
+        self.declare_parameter('odom_topic', '/odom') # declare/get_parameter son métodos de Node
+        self.declare_parameter('scan_topic', '/scan') # los valores en el yaml con el mismo nombre de parámetro, los sobreescriben
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_footprint')
@@ -51,11 +51,11 @@ class PythonSlamNode(Node):
         self.map_origin_x = -self.map_width_m / 2.0
         self.map_origin_y = -5.0
 
-        # TODO: define the log-odds criteria for free and occupied cells
+        # TODO: define the log-odds criteria for free and occupied cells 
         prob_occ = 0.7
-        prob_free = 0.3
+        prob_free = 1 - prob_occ
         self.log_odds_occ = np.log(prob_occ/prob_free)
-        self.log_odds_free = np.log(prob_free/prob_occ)
+        self.log_odds_free = np.log(prob_free/prob_occ) # sumamos logs para no multiplicar probabilidades
 
         self.log_odds_max = 5.0
         self.log_odds_min = -5.0
@@ -63,18 +63,25 @@ class PythonSlamNode(Node):
         # Particle filter
         self.num_particles = self.get_parameter('num_particles').get_parameter_value().integer_value
         self.particles = [Particle(0.0, 0.0, 0.0, 1.0/self.num_particles, (self.map_height_cells, self.map_width_cells)) for _ in range(self.num_particles)]
-        self.best_map = np.zeros((self.map_height_cells, self.map_width_cells), dtype=np.float32)
+        # inicializa las partículas en posición 0,0 con ángulo 0 y con el mismo peso, 1/N
+        # cada partícula es un belief del robot; cada partícula tiene su mapa (mapa log-odds)
+        self.best_map = np.zeros((self.map_height_cells, self.map_width_cells), dtype=np.float32) # el nodo se va a ir guardando el mejor mapa
         self.last_odom = None
 
         # ROS2 publishers/subscribers
-        map_qos_profile = QoSProfile(
+        map_qos_profile = QoSProfile( # políticas para el manejo de mensajes entre nodos en la red
             reliability=QoSReliabilityPolicy.RELIABLE,
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=1,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
         )
-        self.map_publisher = self.create_publisher(OccupancyGrid, '/map', map_qos_profile)
-        self.tf_broadcaster = TransformBroadcaster(self)
+        self.map_publisher = self.create_publisher(OccupancyGrid, '/map', map_qos_profile) # el que quiere escuchar el mapa, se puede suscribir a /map
+        self.tf_broadcaster = TransformBroadcaster(self) # para publicar la transformación del map frame al odom frame; publica 
+        # a critical problem is that the robot's local estimate of its position 
+        # (from odometry, often called the odom frame) tends to drift over time 
+        # due to accumulating errors. The map, however, is built in a globally 
+        # consistent, drift-free coordinate system (the map frame).
+
         self.odom_subscriber = self.create_subscription(
             Odometry,
             self.get_parameter('odom_topic').get_parameter_value().string_value,
@@ -163,15 +170,22 @@ class PythonSlamNode(Node):
             if range_dist < scan_msg.range_min or range_dist > scan_msg.range_max or math.isnan(range_dist):
                 continue
             # TODO: Compute the map coordinates of the endpoint: transform the scan into the map frame
+            angle_scan = scan_msg.angle_min + i * scan_msg.angle_increment
+            x_scan = range_dist * math.cos(angle_scan)
+            y_scan = range_dist * math.sin(angle_scan)
 
+            x_hit = robot_x + x_scan * math.cos(robot_theta) - y_scan * math.sin(robot_theta)
+            y_hit = robot_y + x_scan * math.sin(robot_theta) + y_scan * math.cos(robot_theta)
 
-
-
-
-
+            x_cell = int((x_hit - self.map_origin_x) / self.resolution)
+            y_cell = int((y_hit - self.map_origin_y) / self.resolution)
 
             # TODO: Use particle.log_odds_map for scoring
-
+            if 0 <= x_cell < self.map_width_cells and 0 <= y_cell < self.map_height_cells:
+                if particle.log_odds_map[y_cell, x_cell] > 0:  # cell likely occupied
+                    score += 1.0
+                else:
+                    score += 0.1  # soft penalty for mismatch
 
         return score + 1e-6
 
@@ -310,10 +324,10 @@ class PythonSlamNode(Node):
         return d
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = PythonSlamNode()
+    rclpy.init(args=args) # inicializa ROS2 para poder crear nodos
+    node = PythonSlamNode() # en base a Node de ROS2, creamos un nodo custom para SLAM para definir suscripciones, publicaciones y lógica
     try:
-        rclpy.spin(node)
+        rclpy.spin(node) # es un loop de eventos. ROS escucha constántemente odometría o mediciones
     except KeyboardInterrupt:
         pass
     finally:

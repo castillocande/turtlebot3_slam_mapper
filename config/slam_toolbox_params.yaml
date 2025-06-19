@@ -2,7 +2,7 @@ slam_toolbox:
   ros__parameters:
     solver_plugin: solver_plugins::CeresSolver
     # General Parameters
-    odom_frame: odom
+    odom_frame: odom # string
     map_frame: map
     base_frame: base_footprint
     scan_topic: /scan
