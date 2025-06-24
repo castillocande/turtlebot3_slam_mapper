@@ -44,7 +44,7 @@ class PythonSlamNode(Node): # hereda de Node
         self.declare_parameter('map_resolution', 0.05)
         self.declare_parameter('map_width_meters', 5.0)
         self.declare_parameter('map_height_meters', 5.0)
-        self.declare_parameter('num_particles', 20)#10 a 20 particulas
+        self.declare_parameter('num_particles', 10)#10 a 20 particulas
         
 
         self.resolution = self.get_parameter('map_resolution').get_parameter_value().double_value #esta en config/slam_toolbox_params.yaml --> modificamos el config?
@@ -56,8 +56,8 @@ class PythonSlamNode(Node): # hereda de Node
         self.map_origin_y = -5.0
 
         # TODO: define the log-odds criteria for free and occupied cells 
-        prob_occ = 0.8
-        prob_free = 1 - prob_occ
+        prob_occ = 0.9
+        prob_free = 0.4#1 - prob_occ
         self.log_odds_occ = np.log(prob_occ/prob_free)
         self.log_odds_free = np.log(prob_free/prob_occ) # sumamos logs para no multiplicar probabilidades
 
@@ -69,7 +69,10 @@ class PythonSlamNode(Node): # hereda de Node
         self.particles = [Particle(0.0, 0.0, 0.0, 1.0/self.num_particles, (self.map_height_cells, self.map_width_cells)) for _ in range(self.num_particles)]
         # inicializa las partículas en posición 0,0 con ángulo 0 y con el mismo peso, 1/N
         # cada partícula es un belief del robot; cada partícula tiene su mapa (mapa log-odds)
-        self.best_map = np.zeros((self.map_height_cells, self.map_width_cells), dtype=np.float32) # el nodo se va a ir guardando el mejor mapa
+        
+        #self.best_map = np.zeros((self.map_height_cells, self.map_width_cells), dtype=np.float32) # el nodo se va a ir guardando el mejor mapa
+        self.best_particle = self.particles[0]
+        
         self.last_odom = None
 
         # ROS2 publishers/subscribers
@@ -105,6 +108,7 @@ class PythonSlamNode(Node): # hereda de Node
         self.last_odom = msg
 
     def scan_callback(self, msg: LaserScan):
+        #msg.range_max = 3.0
         if self.last_odom is None:
             return
 
@@ -128,8 +132,8 @@ class PythonSlamNode(Node): # hereda de Node
         # TODO: Model the particles around the current pose
         for p in self.particles:
             # Add noise to simulate motion uncertainty
-            p.x = float(x + np.random.normal(loc=0, scale=0.015))
-            p.y = float(y + np.random.normal(loc=0, scale=0.015))
+            p.x = float(x + np.random.normal(loc=0, scale=0.0015))
+            p.y = float(y + np.random.normal(loc=0, scale=0.0015))
             p.theta = float(theta + np.random.normal(loc=0, scale=0.005))
 
 
@@ -155,16 +159,16 @@ class PythonSlamNode(Node): # hereda de Node
         # self.best_map = best_particle.log_odds_map
         # self.best_pose = [best_particle.x, best_particle.y, best_particle.theta]
         # Calcular media ponderada de x, y y orientación
-        sum_weights = sum(p.weight for p in self.particles)
-        x_mean = sum(p.x * p.weight for p in self.particles) / sum_weights
-        y_mean = sum(p.y * p.weight for p in self.particles) / sum_weights
-        sin_sum = sum(math.sin(p.theta) * p.weight for p in self.particles)
-        cos_sum = sum(math.cos(p.theta) * p.weight for p in self.particles)
-        theta_mean = math.atan2(sin_sum, cos_sum)
+        # sum_weights = sum(p.weight for p in self.particles)
+        # x_mean = sum(p.x * p.weight for p in self.particles) / sum_weights
+        # y_mean = sum(p.y * p.weight for p in self.particles) / sum_weights
+        # sin_sum = sum(math.sin(p.theta) * p.weight for p in self.particles)
+        # cos_sum = sum(math.cos(p.theta) * p.weight for p in self.particles)
+        # theta_mean = math.atan2(sin_sum, cos_sum)
 
-        self.best_pose = [x_mean, y_mean, theta_mean]
-        best_particle = max(self.particles, key=lambda p: p.weight)
-        self.best_map = best_particle.log_odds_map
+        # self.best_pose = [x_mean, y_mean, theta_mean]
+        self.best_particle = max(self.particles, key=lambda p: p.weight)
+        #self.best_map = best_particle.log_odds_map
 
         # 5. Mapping (update map with best particle's pose)
         for p in self.particles:
@@ -174,8 +178,6 @@ class PythonSlamNode(Node): # hereda de Node
         self.broadcast_map_to_odom()
 
     def compute_weight(self, particle, scan_msg):
-        # IDEA: cuán bien coincide la observación del láser (scan) con el mapa construido por esa partícula
-        
         # Simple likelihood: count how many endpoints match occupied cells
         score = 0.0
         robot_x, robot_y, robot_theta = particle.x, particle.y, particle.theta
@@ -233,7 +235,7 @@ class PythonSlamNode(Node): # hereda de Node
         for i, range_dist in enumerate(scan_msg.ranges):
             is_hit = False
             current_range = range_dist
-            if math.isnan(current_range) or current_range < scan_msg.range_min:
+            if math.isinf(range_dist) or  math.isnan(current_range) or current_range < scan_msg.range_min:
                 continue
 
             is_hit = range_dist < scan_msg.range_max
@@ -256,6 +258,10 @@ class PythonSlamNode(Node): # hereda de Node
             x1 = int((x_hit - self.map_origin_x) / self.resolution)
             y1 = int((y_hit - self.map_origin_y) / self.resolution)
 
+            # if 0 <= x1 < self.map_width_cells and 0 <= y1 < self.map_height_cells:
+            #     if particle.log_odds_map[y1, x1] > 0.7:
+            #         continue
+
             # TODO: Use self.bresenham_line for free cells
             self.bresenham_line(particle, x0, y0, x1, y1)
 
@@ -275,6 +281,7 @@ class PythonSlamNode(Node): # hereda de Node
         max_path_len = dx + dy
         while not (x0 == x1 and y0 == y1) and path_len < max_path_len:
             if 0 <= x0 < self.map_width_cells and 0 <= y0 < self.map_height_cells:
+                #if not particle.log_odds_map[y0, x0] > 0.7:
                 particle.log_odds_map[y0, x0] += self.log_odds_free
                 particle.log_odds_map[y0, x0] = np.clip(particle.log_odds_map[y0, x0], self.log_odds_min, self.log_odds_max)
             e2 = 2 * err
@@ -291,8 +298,7 @@ class PythonSlamNode(Node): # hereda de Node
         map_msg = OccupancyGrid()
         print("se esta ejecutando")
 
-        #best_particle = max(self.particles, key=lambda p: p.weight)
-        log_odds =  self.best_map  #best_particle.log_odds_map
+        log_odds =  self.best_particle.log_odds_map
  
         map_msg.header.stamp = self.get_clock().now().to_msg()
         map_msg.header.frame_id = self.map_frame
@@ -332,9 +338,12 @@ class PythonSlamNode(Node): # hereda de Node
         theta_odom = rot_odom.as_euler('xyz')[2]  # yaw
 
         # Diferencia: T_map_odom = T_map_base * inv(T_odom_base)
-        dx = self.best_pose[0] - x_odom
-        dy = self.best_pose[1]  - y_odom
-        dtheta = self.angle_diff(self.best_pose[2], theta_odom)
+        dx = self.best_particle.x - x_odom
+        dy = self.best_particle.y  - y_odom
+        dtheta = self.angle_diff(self.best_particle.theta, theta_odom)
+
+        rot = R.from_euler('z', -theta_odom)
+        trans = rot.apply([dx, dy, 0.0])
 
         # Transformación a aplicar
         t = TransformStamped()
@@ -344,8 +353,10 @@ class PythonSlamNode(Node): # hereda de Node
 
         # Rotar la diferencia según la orientación del mapa
         # Esto asegura que el frame odom esté bien ubicado en el mapa
-        t.transform.translation.x = float(dx * math.cos(-theta_odom) - dy * math.sin(-theta_odom))
-        t.transform.translation.y = float(dx * math.sin(-theta_odom) + dy * math.cos(-theta_odom))
+        # t.transform.translation.x = float(dx * math.cos(-theta_odom) - dy * math.sin(-theta_odom))
+        # t.transform.translation.y = float(dx * math.sin(-theta_odom) + dy * math.cos(-theta_odom))
+        t.transform.translation.x = trans[0]
+        t.transform.translation.y = trans[1]
         t.transform.translation.z = 0.0
 
         # Convertir dtheta a cuaternion
