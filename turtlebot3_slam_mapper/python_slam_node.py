@@ -296,32 +296,75 @@ class PythonSlamNode(Node): # hereda de Node
         print("se termino de ejecutar")
         self.get_logger().debug("Map published.")
 
-    def broadcast_map_to_odom(self):
-        # TODO: Broadcast map->odom transform
-        t = TransformStamped()
+    # def broadcast_map_to_odom(self): # FIJARME CUÁL ES LA MATRIZ DE TRANSFORMACIÓN
+    #     # TODO: Broadcast map->odom transform
+    #     t = TransformStamped()
         
+    #     t.header.stamp = self.get_clock().now().to_msg()
+    #     t.header.frame_id = "map"
+    #     t.child_frame_id = "odom"
+    #     t.transform.translation.x = 0.0
+    #     t.transform.translation.y = 0.0
+    #     t.transform.translation.z = 0.0
+
+    #     t.transform.rotation.x = 0.0
+    #     t.transform.rotation.y = 0.0
+    #     t.transform.rotation.z = 0.0
+    #     t.transform.rotation.w = 1.0
+        
+    #     self.tf_broadcaster.sendTransform(t)
+
+    # @staticmethod
+    # def angle_diff(a, b):
+    #     d = a - b
+    #     while d > np.pi:
+    #         d -= 2 * np.pi
+    #     while d < -np.pi:
+    #         d += 2 * np.pi
+    #     return d
+
+    def broadcast_map_to_odom(self):
+        # Obtener la partícula de mayor peso (mejor estimación global)
+        best_particle = max(self.particles, key=lambda p: p.weight)
+        x_map, y_map, theta_map = best_particle.x, best_particle.y, best_particle.theta
+
+        # Pose odométrica (estimación local)
+        if self.last_odom is None:
+            return
+
+        x_odom = self.last_odom.pose.pose.position.x
+        y_odom = self.last_odom.pose.pose.position.y
+
+        q = self.last_odom.pose.pose.orientation
+        rot_odom = R.from_quat([q.x, q.y, q.z, q.w])
+        theta_odom = rot_odom.as_euler('xyz')[2]  # yaw
+
+        # Diferencia: T_map_odom = T_map_base * inv(T_odom_base)
+        dx = x_map - x_odom
+        dy = y_map - y_odom
+        dtheta = self.angle_diff(theta_map, theta_odom)
+
+        # Transformación a aplicar
+        t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = "map"
         t.child_frame_id = "odom"
-        t.transform.translation.x = 0.0
-        t.transform.translation.y = 0.0
+
+        # Rotar la diferencia según la orientación del mapa
+        # Esto asegura que el frame odom esté bien ubicado en el mapa
+        t.transform.translation.x = dx * math.cos(-theta_odom) - dy * math.sin(-theta_odom)
+        t.transform.translation.y = dx * math.sin(-theta_odom) + dy * math.cos(-theta_odom)
         t.transform.translation.z = 0.0
 
-        t.transform.rotation.x = 0.0
-        t.transform.rotation.y = 0.0
-        t.transform.rotation.z = 0.0
-        t.transform.rotation.w = 1.0
-        
+        # Convertir dtheta a cuaternion
+        q_rot = R.from_euler('z', dtheta).as_quat()
+        t.transform.rotation.x = q_rot[0]
+        t.transform.rotation.y = q_rot[1]
+        t.transform.rotation.z = q_rot[2]
+        t.transform.rotation.w = q_rot[3]
+
         self.tf_broadcaster.sendTransform(t)
 
-    @staticmethod
-    def angle_diff(a, b):
-        d = a - b
-        while d > np.pi:
-            d -= 2 * np.pi
-        while d < -np.pi:
-            d += 2 * np.pi
-        return d
 
 def main(args=None):
     rclpy.init(args=args) # inicializa ROS2 para poder crear nodos
