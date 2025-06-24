@@ -44,7 +44,7 @@ class PythonSlamNode(Node): # hereda de Node
         self.declare_parameter('map_resolution', 0.05)
         self.declare_parameter('map_width_meters', 5.0)
         self.declare_parameter('map_height_meters', 5.0)
-        self.declare_parameter('num_particles', 10)#10 a 20 particulas
+        self.declare_parameter('num_particles', 20)#10 a 20 particulas
         
 
         self.resolution = self.get_parameter('map_resolution').get_parameter_value().double_value #esta en config/slam_toolbox_params.yaml --> modificamos el config?
@@ -56,7 +56,7 @@ class PythonSlamNode(Node): # hereda de Node
         self.map_origin_y = -5.0
 
         # TODO: define the log-odds criteria for free and occupied cells 
-        prob_occ = 0.7
+        prob_occ = 0.8
         prob_free = 1 - prob_occ
         self.log_odds_occ = np.log(prob_occ/prob_free)
         self.log_odds_free = np.log(prob_free/prob_occ) # sumamos logs para no multiplicar probabilidades
@@ -128,13 +128,9 @@ class PythonSlamNode(Node): # hereda de Node
         # TODO: Model the particles around the current pose
         for p in self.particles:
             # Add noise to simulate motion uncertainty
-            dx = x - p.x
-            dy = y - p.y
-            dtheta = theta - p.theta
-
-            p.x = x + np.random.normal(loc=dx, scale=0.01, size=1)
-            p.y = y + np.random.normal(loc=dy, scale=0.01, size=1)
-            p.theta = theta + np.random.normal(loc=dtheta, scale=0.01, size=1)
+            p.x = float(x + np.random.normal(loc=0, scale=0.015))
+            p.y = float(y + np.random.normal(loc=0, scale=0.015))
+            p.theta = float(theta + np.random.normal(loc=0, scale=0.005))
 
 
 
@@ -155,9 +151,20 @@ class PythonSlamNode(Node): # hereda de Node
         self.particles = self.resample_particles(self.particles)
 
         # TODO: 4. Use weighted mean of all particles for mapping and pose (update current_map_pose and current_odom_pose, for each particle)
+        # best_particle = max(self.particles, key=lambda p: p.weight)
+        # self.best_map = best_particle.log_odds_map
+        # self.best_pose = [best_particle.x, best_particle.y, best_particle.theta]
+        # Calcular media ponderada de x, y y orientación
+        sum_weights = sum(p.weight for p in self.particles)
+        x_mean = sum(p.x * p.weight for p in self.particles) / sum_weights
+        y_mean = sum(p.y * p.weight for p in self.particles) / sum_weights
+        sin_sum = sum(math.sin(p.theta) * p.weight for p in self.particles)
+        cos_sum = sum(math.cos(p.theta) * p.weight for p in self.particles)
+        theta_mean = math.atan2(sin_sum, cos_sum)
+
+        self.best_pose = [x_mean, y_mean, theta_mean]
         best_particle = max(self.particles, key=lambda p: p.weight)
         self.best_map = best_particle.log_odds_map
-        self.best_pose = [best_particle.x, best_particle.y, best_particle.theta]
 
         # 5. Mapping (update map with best particle's pose)
         for p in self.particles:
@@ -167,6 +174,8 @@ class PythonSlamNode(Node): # hereda de Node
         self.broadcast_map_to_odom()
 
     def compute_weight(self, particle, scan_msg):
+        # IDEA: cuán bien coincide la observación del láser (scan) con el mapa construido por esa partícula
+        
         # Simple likelihood: count how many endpoints match occupied cells
         score = 0.0
         robot_x, robot_y, robot_theta = particle.x, particle.y, particle.theta
@@ -186,7 +195,7 @@ class PythonSlamNode(Node): # hereda de Node
 
             # TODO: Use particle.log_odds_map for scoring
             if 0 <= x_cell < self.map_width_cells and 0 <= y_cell < self.map_height_cells:
-                if particle.log_odds_map[y_cell, x_cell] > 0:  # cell likely occupied
+                if particle.log_odds_map[y_cell, x_cell] >= self.log_odds_occ:  # cell likely occupied
                     score += 1.0
                 else:
                     score += 0.1  # soft penalty for mismatch
@@ -222,10 +231,14 @@ class PythonSlamNode(Node): # hereda de Node
     def update_map(self, particle, scan_msg):
         robot_x, robot_y, robot_theta = particle.x, particle.y, particle.theta
         for i, range_dist in enumerate(scan_msg.ranges):
-            is_hit = range_dist < scan_msg.range_max
-            current_range = min(range_dist, scan_msg.range_max)
+            is_hit = False
+            current_range = range_dist
             if math.isnan(current_range) or current_range < scan_msg.range_min:
                 continue
+
+            is_hit = range_dist < scan_msg.range_max
+            current_range = min(range_dist, scan_msg.range_max)
+
             # TODO: Update map: transform the scan into the map frame
             angle_scan = scan_msg.angle_min + i * scan_msg.angle_increment
             x_scan = current_range * math.cos(angle_scan)
@@ -302,8 +315,10 @@ class PythonSlamNode(Node): # hereda de Node
 
     def broadcast_map_to_odom(self):
         # Obtener la partícula de mayor peso (mejor estimación global)
-        best_particle = max(self.particles, key=lambda p: p.weight)
-        x_map, y_map, theta_map = best_particle.x, best_particle.y, best_particle.theta
+        # best_particle = max(self.particles, key=lambda p: p.weight)
+        # x_map, y_map, theta_map = best_particle.x, best_particle.y, best_particle.theta
+
+
 
         # Pose odométrica (estimación local)
         if self.last_odom is None:
@@ -317,9 +332,9 @@ class PythonSlamNode(Node): # hereda de Node
         theta_odom = rot_odom.as_euler('xyz')[2]  # yaw
 
         # Diferencia: T_map_odom = T_map_base * inv(T_odom_base)
-        dx = x_map - x_odom
-        dy = y_map - y_odom
-        dtheta = self.angle_diff(theta_map, theta_odom)
+        dx = self.best_pose[0] - x_odom
+        dy = self.best_pose[1]  - y_odom
+        dtheta = self.angle_diff(self.best_pose[2], theta_odom)
 
         # Transformación a aplicar
         t = TransformStamped()
@@ -335,8 +350,6 @@ class PythonSlamNode(Node): # hereda de Node
 
         # Convertir dtheta a cuaternion
         q_rot = R.from_euler('z', dtheta).as_quat()
-        q_rot = q_rot[0] 
-
         t.transform.rotation.x = float(q_rot[0])
         t.transform.rotation.y = float(q_rot[1])
         t.transform.rotation.z = float(q_rot[2])
@@ -348,7 +361,7 @@ class PythonSlamNode(Node): # hereda de Node
     def angle_diff(a, b):
         d = a - b
         while d > np.pi:
-            d -= 2 * np.piloat
+            d -= 2 * np.pi
         while d < -np.pi:
             d += 2 * np.pi
         return d
