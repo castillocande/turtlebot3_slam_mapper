@@ -34,13 +34,17 @@ class PythonSlamNode(Node): # hereda de Node
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_footprint')
+
+        #ESTO LO AGREGUE YOOO
+        self.map_frame = self.get_parameter('map_frame').get_parameter_value().string_value
+        self.odom_frame = self.get_parameter('odom_frame').get_parameter_value().string_value
+        self.base_frame = self.get_parameter('base_frame').get_parameter_value().string_value
         # TODO: define map resolution, width, height, and number of particles
 
-        #10 a 20 particulas
         self.declare_parameter('map_resolution', 0.05)
         self.declare_parameter('map_width_meters', 5.0)
         self.declare_parameter('map_height_meters', 5.0)
-        self.declare_parameter('num_particles', 10)
+        self.declare_parameter('num_particles', 10)#10 a 20 particulas
         
 
         self.resolution = self.get_parameter('map_resolution').get_parameter_value().double_value #esta en config/slam_toolbox_params.yaml --> modificamos el config?
@@ -128,9 +132,9 @@ class PythonSlamNode(Node): # hereda de Node
             dy = y - p.y
             dtheta = theta - p.theta
 
-            p.x = x + np.random.normal(loc=dx, scale=0.1, size=1)
-            p.y = y + np.random.normal(loc=dy, scale=0.1, size=1)
-            p.theta = theta + np.random.normal(loc=dtheta, scale=0.1, size=1)
+            p.x = x + np.random.normal(loc=dx, scale=0.01, size=1)
+            p.y = y + np.random.normal(loc=dy, scale=0.01, size=1)
+            p.theta = theta + np.random.normal(loc=dtheta, scale=0.01, size=1)
 
 
 
@@ -151,9 +155,9 @@ class PythonSlamNode(Node): # hereda de Node
         self.particles = self.resample_particles(self.particles)
 
         # TODO: 4. Use weighted mean of all particles for mapping and pose (update current_map_pose and current_odom_pose, for each particle)
-        # best_particle = max(self.particles, key=lambda p: p.weight)
-        # self.best_map = best_particle.log_odds_map
-        #self.best_pose = [best_particle.x, best_particle.y, best_particle.theta]
+        best_particle = max(self.particles, key=lambda p: p.weight)
+        self.best_map = best_particle.log_odds_map
+        self.best_pose = [best_particle.x, best_particle.y, best_particle.theta]
 
         # 5. Mapping (update map with best particle's pose)
         for p in self.particles:
@@ -274,11 +278,11 @@ class PythonSlamNode(Node): # hereda de Node
         map_msg = OccupancyGrid()
         print("se esta ejecutando")
 
-        best_particle = max(self.particles, key=lambda p: p.weight)
-        log_odds = best_particle.log_odds_map #self.best_map 
+        #best_particle = max(self.particles, key=lambda p: p.weight)
+        log_odds =  self.best_map  #best_particle.log_odds_map
  
         map_msg.header.stamp = self.get_clock().now().to_msg()
-        map_msg.header.frame_id = "map"
+        map_msg.header.frame_id = self.map_frame
         map_msg.info.resolution = self.resolution
         map_msg.info.width = self.map_width_cells
         map_msg.info.height = self.map_height_cells
@@ -295,33 +299,6 @@ class PythonSlamNode(Node): # hereda de Node
         self.map_publisher.publish(map_msg)
         print("se termino de ejecutar")
         self.get_logger().debug("Map published.")
-
-    # def broadcast_map_to_odom(self): # FIJARME CUÁL ES LA MATRIZ DE TRANSFORMACIÓN
-    #     # TODO: Broadcast map->odom transform
-    #     t = TransformStamped()
-        
-    #     t.header.stamp = self.get_clock().now().to_msg()
-    #     t.header.frame_id = "map"
-    #     t.child_frame_id = "odom"
-    #     t.transform.translation.x = 0.0
-    #     t.transform.translation.y = 0.0
-    #     t.transform.translation.z = 0.0
-
-    #     t.transform.rotation.x = 0.0
-    #     t.transform.rotation.y = 0.0
-    #     t.transform.rotation.z = 0.0
-    #     t.transform.rotation.w = 1.0
-        
-    #     self.tf_broadcaster.sendTransform(t)
-
-    # @staticmethod
-    # def angle_diff(a, b):
-    #     d = a - b
-    #     while d > np.pi:
-    #         d -= 2 * np.pi
-    #     while d < -np.pi:
-    #         d += 2 * np.pi
-    #     return d
 
     def broadcast_map_to_odom(self):
         # Obtener la partícula de mayor peso (mejor estimación global)
@@ -352,19 +329,29 @@ class PythonSlamNode(Node): # hereda de Node
 
         # Rotar la diferencia según la orientación del mapa
         # Esto asegura que el frame odom esté bien ubicado en el mapa
-        t.transform.translation.x = dx * math.cos(-theta_odom) - dy * math.sin(-theta_odom)
-        t.transform.translation.y = dx * math.sin(-theta_odom) + dy * math.cos(-theta_odom)
+        t.transform.translation.x = float(dx * math.cos(-theta_odom) - dy * math.sin(-theta_odom))
+        t.transform.translation.y = float(dx * math.sin(-theta_odom) + dy * math.cos(-theta_odom))
         t.transform.translation.z = 0.0
 
         # Convertir dtheta a cuaternion
         q_rot = R.from_euler('z', dtheta).as_quat()
-        t.transform.rotation.x = q_rot[0]
-        t.transform.rotation.y = q_rot[1]
-        t.transform.rotation.z = q_rot[2]
-        t.transform.rotation.w = q_rot[3]
+        q_rot = q_rot[0] 
 
+        t.transform.rotation.x = float(q_rot[0])
+        t.transform.rotation.y = float(q_rot[1])
+        t.transform.rotation.z = float(q_rot[2])
+        t.transform.rotation.w = float(q_rot[3])
+        
         self.tf_broadcaster.sendTransform(t)
 
+    @staticmethod
+    def angle_diff(a, b):
+        d = a - b
+        while d > np.pi:
+            d -= 2 * np.piloat
+        while d < -np.pi:
+            d += 2 * np.pi
+        return d
 
 def main(args=None):
     rclpy.init(args=args) # inicializa ROS2 para poder crear nodos
