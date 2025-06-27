@@ -1,0 +1,17 @@
+[0.551s] Invoking command in '/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper': PYTHONPATH=/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/build --no-deps symlink_data
+[0.757s] running develop
+[0.895s] running egg_info
+[0.895s] writing turtlebot3_slam_mapper.egg-info/PKG-INFO
+[0.896s] writing dependency_links to turtlebot3_slam_mapper.egg-info/dependency_links.txt
+[0.896s] writing entry points to turtlebot3_slam_mapper.egg-info/entry_points.txt
+[0.896s] writing requirements to turtlebot3_slam_mapper.egg-info/requires.txt
+[0.896s] writing top-level names to turtlebot3_slam_mapper.egg-info/top_level.txt
+[0.898s] reading manifest file 'turtlebot3_slam_mapper.egg-info/SOURCES.txt'
+[0.898s] writing manifest file 'turtlebot3_slam_mapper.egg-info/SOURCES.txt'
+[0.899s] running build_ext
+[0.900s] Creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/python3.10/site-packages/turtlebot3-slam-mapper.egg-link (link to .)
+[0.900s] Installing python_slam_node script to /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/turtlebot3_slam_mapper
+[0.901s] 
+[0.901s] Installed /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper
+[0.901s] running symlink_data
+[0.926s] Invoked command in '/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper' returned '0': PYTHONPATH=/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/build --no-deps symlink_data

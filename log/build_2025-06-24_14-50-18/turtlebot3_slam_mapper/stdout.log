@@ -1,0 +1,28 @@
+running develop
+running egg_info
+creating turtlebot3_slam_mapper.egg-info
+writing turtlebot3_slam_mapper.egg-info/PKG-INFO
+writing dependency_links to turtlebot3_slam_mapper.egg-info/dependency_links.txt
+writing entry points to turtlebot3_slam_mapper.egg-info/entry_points.txt
+writing requirements to turtlebot3_slam_mapper.egg-info/requires.txt
+writing top-level names to turtlebot3_slam_mapper.egg-info/top_level.txt
+writing manifest file 'turtlebot3_slam_mapper.egg-info/SOURCES.txt'
+reading manifest file 'turtlebot3_slam_mapper.egg-info/SOURCES.txt'
+writing manifest file 'turtlebot3_slam_mapper.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/python3.10/site-packages/turtlebot3-slam-mapper.egg-link (link to .)
+Installing python_slam_node script to /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/turtlebot3_slam_mapper
+
+Installed /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper
+running symlink_data
+creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/ament_index
+creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/ament_index/resource_index
+creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/ament_index/resource_index/packages
+symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/resource/turtlebot3_slam_mapper -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/ament_index/resource_index/packages
+symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/package.xml -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper
+creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/launch
+symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/launch/python_slam_maze.launch.py -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/launch
+creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/rviz
+symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/rviz/slam_maze.rviz -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/rviz
+creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/config
+symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/config/slam_toolbox_params.yaml -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/config

@@ -1,0 +1,30 @@
+[1.854s] Invoking command in '/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper': PYTHONPATH=/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/build --no-deps symlink_data
+[2.515s] running develop
+[2.952s] running egg_info
+[2.952s] creating turtlebot3_slam_mapper.egg-info
+[2.954s] writing turtlebot3_slam_mapper.egg-info/PKG-INFO
+[2.955s] writing dependency_links to turtlebot3_slam_mapper.egg-info/dependency_links.txt
+[2.955s] writing entry points to turtlebot3_slam_mapper.egg-info/entry_points.txt
+[2.956s] writing requirements to turtlebot3_slam_mapper.egg-info/requires.txt
+[2.956s] writing top-level names to turtlebot3_slam_mapper.egg-info/top_level.txt
+[2.957s] writing manifest file 'turtlebot3_slam_mapper.egg-info/SOURCES.txt'
+[2.967s] reading manifest file 'turtlebot3_slam_mapper.egg-info/SOURCES.txt'
+[2.969s] writing manifest file 'turtlebot3_slam_mapper.egg-info/SOURCES.txt'
+[2.974s] running build_ext
+[2.974s] Creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/python3.10/site-packages/turtlebot3-slam-mapper.egg-link (link to .)
+[2.976s] Installing python_slam_node script to /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/turtlebot3_slam_mapper
+[2.978s] 
+[2.978s] Installed /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper
+[2.979s] running symlink_data
+[2.980s] creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/ament_index
+[2.980s] creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/ament_index/resource_index
+[2.980s] creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/ament_index/resource_index/packages
+[2.981s] symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/resource/turtlebot3_slam_mapper -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/ament_index/resource_index/packages
+[2.981s] symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/package.xml -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper
+[2.982s] creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/launch
+[2.982s] symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/launch/python_slam_maze.launch.py -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/launch
+[2.983s] creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/rviz
+[2.984s] symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/rviz/slam_maze.rviz -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/rviz
+[2.985s] creating /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/config
+[2.985s] symbolically linking /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/config/slam_toolbox_params.yaml -> /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/share/turtlebot3_slam_mapper/config
+[3.054s] Invoked command in '/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper' returned '0': PYTHONPATH=/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/install/turtlebot3_slam_mapper/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/cande/turtlebot3_ws/src/turtlebot3_slam_mapper/build/turtlebot3_slam_mapper/build --no-deps symlink_data
